@@ -7,6 +7,7 @@ edition = "2021"
 bevy = { version = "0.14", features = ["dynamic_linking"] }
 log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] }
 bevy_flycam = "*"
+bevy_rapier3d = { version = "*", features = [ "simd-nightly", "debug-render-3d" ] }
 
 [profile.dev]
 opt-level = 1
