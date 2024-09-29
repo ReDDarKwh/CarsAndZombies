@@ -2,14 +2,17 @@ use bevy::prelude::*;
 use bevy_flycam::prelude::*;
 use bevy_rapier3d::prelude::*;
 
-fn keyboard_input(
-    keys: Res<ButtonInput<KeyCode>>,
-    mut exit: EventWriter<AppExit>
-) {
+fn keyboard_input(keys: Res<ButtonInput<KeyCode>>, mut exit: EventWriter<AppExit>) {
     if keys.just_pressed(KeyCode::Escape) {
         // Space was pressed
         exit.send(AppExit::Success);
     }
+}
+
+#[derive(Component)]
+struct Truster {
+    position: Vec3,
+    force: Vec3,
 }
 
 fn setup(
@@ -18,11 +21,37 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
-        material: materials.add(Color::srgb_u8(124, 144, 255)),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
+        mesh: meshes.add(Plane3d::new(Vec3::Y, Vec2::new(10.0, 10.0))),
+        material: materials.add(Color::srgb_u8(124, 144, 0)),
+        transform: Transform::from_xyz(0.0, -2.0, 0.0),
         ..default()
     });
+
+    let f = 20.0;
+
+    commands
+        .spawn(RigidBody::Dynamic)
+        .insert(Truster {
+            force: Vec3::new(0.0, 10.0, 0.0),
+            position: Vec3::new(-1.5, 0.0, 0.5),
+        })
+        .insert(ExternalForce {
+            force: Vec3::new(0.0, f, 0.0),
+            torque: Vec3::ZERO,
+        })
+        // .insert(ExternalForce::at_point(
+        //     Vec3::new(0.0, f, 0.0),
+        //     Vec3::new(1.5, 0.0, -0.5),
+        //     Vec3::new(0.0, 0.0, 0.0),
+        // ))
+        .insert(Collider::cuboid(1.5, 0.25, 0.5))
+        .insert(Restitution::coefficient(0.7))
+        .insert(PbrBundle {
+            mesh: meshes.add(Cuboid::new(3.0, 0.5, 1.0)),
+            material: materials.add(Color::srgb_u8(124, 144, 255)),
+            ..default()
+        })
+        .insert(TransformBundle::from(Transform::from_xyz(0.0, 1.0, 0.0)));
 }
 
 fn setup_physics(mut commands: Commands) {
@@ -32,11 +61,16 @@ fn setup_physics(mut commands: Commands) {
         .insert(TransformBundle::from(Transform::from_xyz(0.0, -2.0, 0.0)));
 
     /* Create the bouncing ball. */
-    commands
-        .spawn(RigidBody::Dynamic)
-        .insert(Collider::ball(0.5))
-        .insert(Restitution::coefficient(0.7))
-        .insert(TransformBundle::from(Transform::from_xyz(0.0, 4.0, 0.0)));
+}
+
+fn truster_system(mut query: Query<(&Truster, &Transform, &mut ExternalForce)>) {
+    for (truster, transform, mut force) in &mut query {
+        force.force = Vec3::new(
+            0.0,
+            transform.translation.y.remap(0.0, 2.0, 1.0, 0.0) * truster.force.y,
+            0.0,
+        );
+    }
 }
 
 fn main() {
@@ -48,6 +82,6 @@ fn main() {
         .insert_resource(ClearColor(Color::srgb(0.9, 0.3, 0.6)))
         .add_systems(Startup, setup)
         .add_systems(Startup, setup_physics)
-        .add_systems(Update, keyboard_input)
+        .add_systems(Update, (keyboard_input, truster_system))
         .run();
 }
