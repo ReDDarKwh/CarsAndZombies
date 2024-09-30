@@ -9,10 +9,14 @@ fn keyboard_input(keys: Res<ButtonInput<KeyCode>>, mut exit: EventWriter<AppExit
     }
 }
 
-#[derive(Component)]
 struct Truster {
     position: Vec3,
-    force: Vec3,
+}
+
+#[derive(Component)]
+struct TrusterGroup {
+    trusters: Vec<Truster>,
+    force: f32,
 }
 
 fn setup(
@@ -31,9 +35,22 @@ fn setup(
 
     commands
         .spawn(RigidBody::Dynamic)
-        .insert(Truster {
-            force: Vec3::new(0.0, 10.0, 0.0),
-            position: Vec3::new(-1.5, 0.0, 0.5),
+        .insert(TrusterGroup {
+            force: 10.0,
+            trusters: vec![
+                Truster {
+                    position: Vec3::new(0.0, 0.0, 0.0),
+                },
+                Truster {
+                    position: Vec3::new(0.0, 0.0, 0.0),
+                },
+                Truster {
+                    position: Vec3::new(0.0, 0.0, 0.0),
+                },
+                Truster {
+                    position: Vec3::new(0.0, 0.0, 0.0),
+                },
+            ],
         })
         .insert(ExternalForce {
             force: Vec3::new(0.0, f, 0.0),
@@ -63,13 +80,20 @@ fn setup_physics(mut commands: Commands) {
     /* Create the bouncing ball. */
 }
 
-fn truster_system(mut query: Query<(&Truster, &Transform, &mut ExternalForce)>) {
-    for (truster, transform, mut force) in &mut query {
-        force.force = Vec3::new(
-            0.0,
-            transform.translation.y.remap(0.0, 2.0, 1.0, 0.0) * truster.force.y,
-            0.0,
-        );
+fn truster_system(mut query: Query<(&TrusterGroup, &Transform, &mut ExternalForce)>) {
+    for (truster_group, transform, mut force) in &mut query {
+        
+        force.force = Vec3::ZERO;
+        
+        for truster in truster_group.trusters {
+
+            force.force = force.force + Vec3::new(
+                0.0,
+                transform.translation.y.remap(0.0, 2.0, 1.0, 0.0) * truster_group.force,
+                0.0,
+            );
+
+        }
     }
 }
 
